@@ -11,6 +11,7 @@ import org.scalatestplus.mockito.MockitoSugar
 
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.io.Source
+import scala.util.Try
 
 class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
 
@@ -18,8 +19,17 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
 
     "readInputData" should {
 
-      "return dataset with input data" in {
+      "return input dataset when no data" in {
         val path = getClass.getClassLoader.getResource("data/sample01").getPath
+
+        val result = new Processor().readInputData(spark, path)
+
+        val resultRecords = result.collect().toSeq
+        resultRecords should equal(Nil)
+      }
+
+      "return input dataset with mixed csv and tsv data" in {
+        val path = getClass.getClassLoader.getResource("data/sample02").getPath
 
         val result = new Processor().readInputData(spark, path)
 
@@ -44,20 +54,66 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
         )
       }
 
-      "return dataset with empty data" in {
-        val path = getClass.getClassLoader.getResource("data/sample02").getPath
+      "return input dataset with csv data only" in {
+        val path = getClass.getClassLoader.getResource("data/sample03").getPath
 
         val result = new Processor().readInputData(spark, path)
 
         val resultRecords = result.collect().toSeq
-        resultRecords should equal(Nil)
+        resultRecords should equal(
+          Seq(
+            Record(1, 2),
+            Record(0, 3),
+            Record(4, 0),
+            Record(0, 0)
+          )
+        )
+      }
+
+      "return input dataset with tsv data only" in {
+        val path = getClass.getClassLoader.getResource("data/sample04").getPath
+
+        val result = new Processor().readInputData(spark, path)
+
+        val resultRecords = result.collect().toSeq
+        resultRecords should equal(
+          Seq(
+            Record(0, 10),
+            Record(12, 0),
+            Record(11, 12),
+            Record(0, 0)
+          )
+        )
       }
 
     }
 
     "doLogic" should {
 
-      "return processed input data with odd counts" in {
+      "return processed data on empty input" in {
+        val inputDataset = spark.createDataset(Nil)(Encoders.product[Record])
+
+        val result = new Processor().doLogic(inputDataset)
+
+        val resultRecords = result.collect().toSeq
+        resultRecords should equal(Nil)
+      }
+
+      "return processed data when no odd counts in input" in {
+        val inputDataset = spark.createDataset(
+          Seq(
+            Record(0, 4),
+            Record(0, 4),
+          )
+        )(Encoders.product[Record])
+
+        val result = new Processor().doLogic(inputDataset)
+
+        val resultRecords = result.collect().toSeq
+        resultRecords should equal(Nil)
+      }
+
+      "return processed data when odd counts in input" in {
         val inputDataset = spark.createDataset(
           Seq(
             Record(0, 4),
@@ -86,36 +142,23 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
         )
       }
 
-      "return processed input data with no odd counts" in {
-        val inputDataset = spark.createDataset(
-          Seq(
-            Record(0, 4),
-            Record(0, 4),
-          )
-        )(Encoders.product[Record])
-
-        val result = new Processor().doLogic(inputDataset)
-
-        val resultRecords = result.collect().toSeq
-        resultRecords should equal(Nil)
-      }
-
-      "return processed input data on empty input" in {
-        val inputDataset = spark.createDataset(
-          Nil
-        )(Encoders.product[Record])
-
-        val result = new Processor().doLogic(inputDataset)
-
-        val resultRecords = result.collect().toSeq
-        resultRecords should equal(Nil)
-      }
-
     }
 
     "writeOutputData" should {
 
-      "write output data in tsv format to non existent directory" in {
+      "write empty output data" in {
+        val outputPath = s"/tmp/${UUID.randomUUID().toString}"
+        val dataset = spark.createDataset(Nil)(Encoders.product[Record])
+
+        new Processor().writeOutputData(dataset, outputPath)
+
+        val files = Files.list(Path.of(outputPath)).iterator().asScala.toSeq
+        val result = files.filter(p => p.getFileName.toString.endsWith(".csv")).map(readFile).mkString("\n")
+        System.out.println(result)
+        result should equal("")
+      }
+
+      "write output data in tsv format" in {
         val outputPath = s"/tmp/${UUID.randomUUID().toString}"
         val dataset = spark.createDataset(
           Seq(
@@ -126,14 +169,19 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
 
         new Processor().writeOutputData(dataset, outputPath)
 
-        val files  = Files.list(Path.of(outputPath)).iterator().asScala.toSeq
-        val result = files.filter(p => p.getFileName.toString.endsWith(".csv")).map(p => Source.fromFile(p.toFile).mkString).mkString("\n")
+        val files = Files.list(Path.of(outputPath)).iterator().asScala.toSeq
+        val result = files.filter(p => p.getFileName.toString.endsWith(".csv")).map(readFile).mkString("\n")
         System.out.println(result)
         result should equal("4\t3\n10\t1\n")
       }
 
     }
 
+  }
+
+  private def readFile(path: Path): String = {
+    Try(Source.fromFile(path.toFile))
+      .map(_.mkString).getOrElse(throw new RuntimeException(s"Failed to read path: $path"))
   }
 
 }
