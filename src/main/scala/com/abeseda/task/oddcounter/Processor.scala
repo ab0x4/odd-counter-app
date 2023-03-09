@@ -6,7 +6,7 @@ import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
 
 class Processor {
 
-  private val COLUMN_KEY = "key"
+  private val COLUMN_KEY   = "key"
   private val COLUMN_VALUE = "value"
   private val COLUMN_COUNT = "count"
 
@@ -59,7 +59,6 @@ class Processor {
 
   protected[oddcounter] def writeOutputData(dataset: Dataset[Record], outputPath: String): Unit = {
     dataset.write
-      .mode("overwrite")
       .option("header", "false")
       .option("delimiter", "\t")
       .csv(outputPath)

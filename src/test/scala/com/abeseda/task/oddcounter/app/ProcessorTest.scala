@@ -57,7 +57,7 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
 
     "doLogic" should {
 
-      "return processed input data" in {
+      "return processed input data with odd counts" in {
         val inputDataset = spark.createDataset(
           Seq(
             Record(0, 4),
@@ -86,12 +86,37 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
         )
       }
 
+      "return processed input data with no odd counts" in {
+        val inputDataset = spark.createDataset(
+          Seq(
+            Record(0, 4),
+            Record(0, 4),
+          )
+        )(Encoders.product[Record])
+
+        val result = new Processor().doLogic(inputDataset)
+
+        val resultRecords = result.collect().toSeq
+        resultRecords should equal(Nil)
+      }
+
+      "return processed input data on empty input" in {
+        val inputDataset = spark.createDataset(
+          Nil
+        )(Encoders.product[Record])
+
+        val result = new Processor().doLogic(inputDataset)
+
+        val resultRecords = result.collect().toSeq
+        resultRecords should equal(Nil)
+      }
+
     }
 
     "writeOutputData" should {
 
-      "write output data in tsv format" in {
-        val outputPath = Files.createTempDirectory(UUID.randomUUID().toString).toFile.getAbsolutePath
+      "write output data in tsv format to non existent directory" in {
+        val outputPath = s"/tmp/${UUID.randomUUID().toString}"
         val dataset = spark.createDataset(
           Seq(
             Record(4, 3),
@@ -101,7 +126,7 @@ class ProcessorTest extends AnyWordSpec with TestSparkSuite with MockitoSugar {
 
         new Processor().writeOutputData(dataset, outputPath)
 
-        val files = Files.list(Path.of(outputPath)).iterator().asScala.toSeq
+        val files  = Files.list(Path.of(outputPath)).iterator().asScala.toSeq
         val result = files.filter(p => p.getFileName.toString.endsWith(".csv")).map(p => Source.fromFile(p.toFile).mkString).mkString("\n")
         System.out.println(result)
         result should equal("4\t3\n10\t1\n")

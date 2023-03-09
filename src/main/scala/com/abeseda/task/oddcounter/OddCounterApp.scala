@@ -16,7 +16,7 @@ object OddCounterApp {
     // set aws profile to AWS_PROFILE
 
     // load configs and init spark
-    val sparkConfig = getSparkConf
+    val sparkConfig  = getSparkConf
     val sparkSession = sparkInit(sparkConfig)
 
     // do the processing
