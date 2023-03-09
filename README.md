@@ -51,7 +51,7 @@ b) Another approach to solve this task, would be:
 
 Complexity should be O(2*N^2/E), where E number of executors.
 
-c) Preferred approach - communicate with upstream team and discuss possibility to write csv and tsv files in separate folders.
+c) Preferred approach - communicate with upstream team and discuss a possibility to write csv and tsv files in separate folders:
 - read csv / tsv files separately using spark internals
 - combine 2 datasets in single using by union
 
