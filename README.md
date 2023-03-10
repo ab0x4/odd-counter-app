@@ -40,22 +40,22 @@ To run application
 
 a) The solution provided in this application allows to read each file once only.
 
-Complexity should be O(N^2/E), where E number of executors.\
-Considering that cost of reading is N, and cost of processing is N as well. 
+Complexity should be O((N+M)/E), where E number of executors.\
+Considering that cost of reading is N, and cost of processing is M as well. 
 
 b) Another approach to solve this task, would be:
-- split csv/tsv files, by reading its header and first line
+- split csv/tsv files by reading header of each file and determine separator
 - create 2 separate list of files - csv, tsv
 - read each set of files separately using spark internals
 - combine 2 datasets in single using by union
 
-Complexity should be O(2*N^2/E), where E number of executors.
+Complexity should be O((2*N+M)/E), where E number of executors.
 
 c) Preferred approach - communicate with upstream team and discuss a possibility to write csv and tsv files in separate folders:
 - read csv / tsv files separately using spark internals
 - combine 2 datasets in single using by union
 
-Complexity should be O(N^2/E), where E number of executors.\
+Complexity should be O((N+M)/E), where E number of executors.\
 This implementation has 2 benefits:
 - proper and clean storage of files
 - clean and concise processing algorithm using spark internals
